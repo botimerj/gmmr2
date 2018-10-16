@@ -23,7 +23,7 @@ class Body():
                                        rand.randint(-16000,16000)]
         else            : self.coor = coor 
 
-        if radius is None : self.radius = rand.randint(100,500)
+        if radius is None : self.radius = rand.randint(50,2000)
         else              : self.radius = radius 
         if velocity is None : self.velocity = (0,0)
         else                : self.velocity = velocity

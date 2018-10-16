@@ -14,7 +14,7 @@ FPS = 30
 FRAME_DELAY = 1/FPS*1000
 WHITE = 0xFFFFFF 
 BLACK = 0x000000
-G = 1
+G = 5 
 
 class Image(): 
     def __init__(self) : 
@@ -136,10 +136,10 @@ class GameState():
         #ent_arr.append(Planet(radius=500,coor=(10000,1000),velocity=(0,vel)))
         #ent_arr.append(Planet(radius=500,coor=(14000,1000),velocity=(0,-vel)))
     
-        sun_radius = 5000
-        sun_density = 100
+        sun_radius = 10000
+        sun_density = 5 
         sun_mass = sun_radius*sun_density
-        ss_rad = 50000
+        ss_rad = 75000
       
         ent_arr.append(Body(radius=sun_radius,coor=[0,0],density=sun_density))
         for i in range(50) : 
