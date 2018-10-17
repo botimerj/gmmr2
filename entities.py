@@ -15,24 +15,29 @@ class Body():
                        radius    = None,\
                        density   = None,\
                        velocity  = None):
+        
+        # Identifiers
         self.type   = body_type
-        self.id     = rand.randint(0,2**32)
+        self.id     = rand.randint(1,2**32)
         if color is None : self.color  = (rand.randint(50,255),rand.randint(50,255),rand.randint(50,255))
         else             : self.color  = color
+
+        # Physics
         if coor is None : self.coor = [rand.randint(-16000,16000),\
                                        rand.randint(-16000,16000)]
         else            : self.coor = coor 
-
-        if radius is None : self.radius = rand.randint(50,2000)
+        if radius is None : self.radius = rand.randint(10,200)
         else              : self.radius = radius 
         if velocity is None : self.velocity = (0,0)
         else                : self.velocity = velocity
         if density is None : self.density = 1 
         else               : self.density = density
-
         self.mass     = self.radius*self.density 
-        self.forces   = np.empty([1,2])
-        self.accel    = np.empty(2)
+        self.forces   = np.zeros([1,2])
+        self.accel    = np.zeros(2)
+        
+        # Approx physics
+        self.influences = [] 
    
         # Image information
         self.visible   = False

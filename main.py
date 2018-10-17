@@ -10,14 +10,15 @@ from entities import Grid
 SCREEN_SIZE = (1440,810)
 #SCREEN_SIZE = (1920,1080)
 CENTER = (int(SCREEN_SIZE[0]/2),int(SCREEN_SIZE[1]/2))
-FPS = 30
+FPS = 30 
 FRAME_DELAY = 1/FPS*1000
 WHITE = 0xFFFFFF 
 BLACK = 0x000000
-G = 5 
+G = 1
 
 class Image(): 
     def __init__(self) : 
+        self.display = True
         self.time = 0
         self.focus = [0,0]       
         self.zoom  = 10 # Meters/Pixel
@@ -122,6 +123,16 @@ class GameState():
         self.speed = FRAME_DELAY
         self.pause = True
         self.image = Image() 
+        self.cycle = 0
+        self.time  = 0
+        self.cycles_per_second = 0 
+
+        # Approx Physics
+        self.N = 10 # Number of influencers
+        self.sync_cycles = 1000 # Number of cycles between synchronization
+        self.sync_counter = 0
+        self.id_arr = []
+
         self.entities = self.init_entities()
         self.image.init(self.entities) 
         
@@ -129,20 +140,20 @@ class GameState():
         ent_arr = []
         #ent_arr.append(Planet(radius=100,coor=(0,0),velocity=(1,1)))
         #ent_arr.append(Planet(radius=100,coor=(1000,1000),velocity=(-1,-1)))
-        #vel = np.sqrt(500*10*G/2000)/2
-        #ent_arr.append(Planet(radius=500,coor=(-2000,0),velocity=(0,vel)))
-        #ent_arr.append(Planet(radius=500,coor=(2000,0),velocity=(0,-vel)))
-        #vel = np.sqrt(300*10*G/2000)/2
-        #ent_arr.append(Planet(radius=500,coor=(10000,1000),velocity=(0,vel)))
-        #ent_arr.append(Planet(radius=500,coor=(14000,1000),velocity=(0,-vel)))
+        #vel = np.sqrt(500*1*G/2000)/2
+        #ent_arr.append(Body(radius=500,coor=(-2000,0),velocity=(0,vel)))
+        #ent_arr.append(Body(radius=500,coor=(2000,0),velocity=(0,-vel)))
+        #vel = np.sqrt(500*1*G/2000)/2
+        #ent_arr.append(Body(radius=500,coor=(10000,1000),velocity=(0,vel)))
+        #ent_arr.append(Body(radius=500,coor=(14000,1000),velocity=(0,-vel)))
     
         sun_radius = 10000
-        sun_density = 5 
+        sun_density = 2 
         sun_mass = sun_radius*sun_density
-        ss_rad = 75000
+        ss_rad = 100000
       
         ent_arr.append(Body(radius=sun_radius,coor=[0,0],density=sun_density))
-        for i in range(50) : 
+        for i in range(200) : 
             x_coor = rand.randint(-ss_rad,ss_rad)
             y_coor = rand.randint(-ss_rad,ss_rad) 
             theta = np.abs(np.arctan(y_coor/x_coor))
@@ -157,6 +168,7 @@ class GameState():
         #vel = np.sqrt(1000*10*G/6000)
         #ent_arr.append(Planet(radius=200,coor=[6000,0],velocity=(0,-vel),density=0.001))
         
+        for e in ent_arr : self.id_arr.append(e.id)
         return ent_arr
     
     def merge(self, e1, e2) : 
@@ -173,7 +185,6 @@ class GameState():
         return e3
 
     def physics(self, dt) : 
-
         for entity in self.entities : 
             # Check collision
             for e in self.entities : 
@@ -200,12 +211,83 @@ class GameState():
                     forces = np.append(forces,[[Fx,Fy]],axis=0)
             entity.forces = forces 
             entity.physics(dt,self.image.zoom,self.image.focus)
+        
+            self.cycle += 1
+            self.time  += dt/1000
             #print(np.sum(forces,axis=0),'v= ', entity.velocity, 'a= ', entity.accel, end=' | ')
         #print('----')
+
+    def collisions(self) : 
+        for entity in self.entities : 
+            # Check collision
+            for e in self.entities : 
+                if e != entity: # don't check self collision
+                    if distance(entity.coor,e.coor) < (entity.radius + e.radius)/4*3 : 
+                        self.id_arr.remove(e.id)
+                        entity = self.merge(entity, e)
+                        self.entities.remove(e)
+                        self.synchronize()
+
+    def synchronize(self) : 
+        # For each body, save a list of top N influencers
+        for entity in self.entities : 
+            forces = np.zeros(self.N)
+            #influences = np.zeros(self.N,dtype=int) 
+            influences = [0 for i in range(self.N)]
+            m1 = entity.mass
+            for e in self.entities :  # Make a list of objects acting on an entity
+                if e != entity: # don't calculate force for itself
+                    m2 = e.mass
+                    [dy,dx] = [entity.coor[1]-e.coor[1],entity.coor[0]-e.coor[0]]
+                    r2 = distance2(entity.coor,e.coor)
+                    F = G*m1*m2/r2
+                    min_idx = np.argmin(forces)
+                    if F > forces[min_idx] :
+                        forces[min_idx] = F
+                        influences[min_idx] = e.id
+            # If there are less than 10 bodies remove extra values
+            while 0 in influences : 
+                influences.remove(0)
+            entity.influences = influences
+            #print('Body ID : ', entity.id)
+            #print(entity.influences)
+            #print('-----')
+            self.sync_counter = 0
+
+    def approx_physics(self, dt) : 
+        self.collisions()
+        if self.sync_counter == self.sync_cycles : 
+            self.synchronize()
+        self.sync_counter += 1
+
+        for entity in self.entities : 
+            forces = np.zeros([1,2])
+            m1 = entity.mass
+            for i in range(len(entity.influences)) :  # Calculate the force of influences on object
+                e_idx = self.id_arr.index(entity.influences[i])
+                e = self.entities[e_idx]
+                m2 = e.mass
+                [dy,dx] = [entity.coor[1]-e.coor[1],entity.coor[0]-e.coor[0]]
+                if dx != 0 : 
+                    theta = np.abs(np.arctan(dy/dx))
+                else : 
+                    theta = np.pi/2
+                r2 = distance2(entity.coor,e.coor)
+                F = G*m1*m2/r2
+                Fx = F*np.cos(theta)*np.sign(-dx)
+                Fy = F*np.sin(theta)*np.sign(-dy)
+                forces = np.append(forces,[[Fx,Fy]],axis=0)
+            entity.forces = forces
+            entity.physics(dt,self.image.zoom,self.image.focus)
+            self.cycle += 1
+            self.time  += dt/1000
 
          
     def print_stats(self) : 
         print('bodies = ', len(self.entities))
+        print('cycle  = ', self.cycle)
+        print('time   = ', self.time)
+        print('CPS    = ', self.cycles_per_second)
 
 def distance(a,b):
     return np.sqrt((a[1]-b[1])**2+(a[0]-b[0])**2)
@@ -227,6 +309,11 @@ def main():
 
     time = 0
 
+
+    # Cycles per second
+    time_old = 0
+    cycle_old = 0
+
     running = True
      
     # main loop
@@ -234,9 +321,19 @@ def main():
 
         # Things that run on time
         time = pygame.time.get_ticks() 
-        if time-gs.image.time > FRAME_DELAY :
+        if time - time_old > 10000 : 
+            gs.cycles_per_second = (gs.cycle-cycle_old)/10
+            cycle_old = gs.cycle
+            time_old = time
+
+        if gs.image.display is False : # run physics loop as fast as possible
             if gs.pause == False : 
-                gs.physics(gs.speed)
+                #gs.physics(gs.speed)
+                gs.approx_physics(gs.speed)
+        elif gs.image.display and time-gs.image.time > FRAME_DELAY :
+            if gs.pause == False : 
+                #gs.physics(gs.speed)
+                gs.approx_physics(gs.speed)
             if gs.image.tracking != None : 
                 gs.image.set_focus(gs.entities) 
             gs.image.update(gs.entities)
@@ -265,9 +362,18 @@ def main():
                 if event.key == 27 : gs.image.tracking = None  # Esc to cancel tracking
                 if event.key == 103 :  # G to toggle grid
                     gs.image.grid.grid_enable = not gs.image.grid.grid_enable 
-                if event.key == 44 : gs.speed /= 2 #  < decrease speed
-                if event.key == 46 : gs.speed *= 2 #  < increase speed
-                if event.key == 47 : gs.speed = FRAME_DELAY  # / realtime
+                if event.key == 100 :  # D to toggle if display is updated
+                    gs.image.display = not gs.image.display
+                    print('display : ', gs.image.display)
+                if event.key == 44 : 
+                    gs.speed /= 2 #  < decrease speed
+                    print('speed = ', gs.speed)
+                if event.key == 46 : 
+                    gs.speed *= 2 #  < increase speed
+                    print('speed = ', gs.speed)
+                if event.key == 47 : 
+                    gs.speed = FRAME_DELAY  # / realtime
+                    print('speed = ', gs.speed)
                 if event.key == 118  : gs.print_stats() # V to print stats
                     
             #elif event.type == pygame.MOUSEMOTION : 
