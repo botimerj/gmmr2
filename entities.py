@@ -88,9 +88,11 @@ class Body():
             
             # Enclose focus in a circle and check if body px radius intersects with it
             focus_radius = config.SCREEN_SIZE[0]*zoom
-            if distance(focus, self.coor) > (self.radius+focus_radius) : self.visible = False 
-            else : self.visible = True
-            self.draw(zoom, focus)
+            if distance(focus, self.coor) > (self.radius+focus_radius) : 
+                self.visible = False 
+            else : 
+                self.visible = True
+                self.draw(zoom, focus)
     
     def physics(self,dt,zoom,focus) : 
         self.accel = np.sum(self.forces,axis=0)/self.mass

@@ -7,6 +7,7 @@ from logo import draw_logo
 from entities import Body
 from entities import Grid
 from solar_system import solar_system
+from solar_system import massive_bodies 
 
 class Image(): 
     def __init__(self) : 
@@ -131,6 +132,7 @@ class GameState():
         
     def init_entities(self) : 
         ent_arr = solar_system() 
+        #ent_arr = massive_bodies() 
         for e in ent_arr: 
             self.id_arr.append(e.id)
         self.image.zoom_full(ent_arr)
@@ -289,7 +291,7 @@ def main():
     time_old = 0
     cycle_old = 0
     physics_cycle_count = 0
-    physics_cycles_per_frame = 10
+    physics_cycles_per_frame = 50
 
     running = True
      
@@ -303,22 +305,23 @@ def main():
             cycle_old = gs.cycle
             time_old = time
 
-        #if gs.image.display is False : # run physics loop as fast as possible
-        #    if gs.pause == False : 
-        #        #gs.physics(gs.speed)
-        #        gs.approx_physics(gs.speed)
-
-        if physics_cycle_count < physics_cycles_per_frame : 
+        if gs.image.display is False : # run physics loop as fast as possible
             if gs.pause == False : 
                 #gs.physics(gs.speed)
-                gs.approx_physics(gs.speed/physics_cycles_per_frame)
-                physics_cycle_count += 1
+                gs.approx_physics(gs.speed)
+
+        #if physics_cycle_count < physics_cycles_per_frame : 
+        #    if gs.pause == False : 
+        #        #gs.physics(gs.speed)
+        #        gs.approx_physics(gs.speed/physics_cycles_per_frame)
+        #        physics_cycle_count += 1
                  
         
         if gs.image.display and time-gs.image.time > config.FRAME_DELAY :
-            #if gs.pause == False : 
-            #    #gs.physics(gs.speed)
-            #    gs.approx_physics(gs.speed)
+            if gs.pause == False : 
+                #gs.physics(gs.speed)
+                for i in range(physics_cycles_per_frame) : 
+                    gs.approx_physics(gs.speed)
             if gs.image.tracking != None : 
                 gs.image.set_focus(gs.entities) 
             gs.image.update(gs.entities)
@@ -353,13 +356,13 @@ def main():
                     print('display : ', gs.image.display)
                 if event.key == 44 : 
                     gs.speed /= 2 #  < decrease speed
-                    print('speed = ', gs.speed)
+                    print(f'speed = {gs.speed/1000:.2f}')
                 if event.key == 46 : 
                     gs.speed *= 2 #  < increase speed
-                    print('speed = ', gs.speed)
+                    print(f'speed = {gs.speed/1000:.2f}')
                 if event.key == 47 : 
                     gs.speed = config.FRAME_DELAY  # / realtime
-                    print('speed = ', gs.speed)
+                    print(f'speed = {gs.speed/1000:.2f}')
                 if event.key == 118 : gs.print_stats() # V to print stats
                 if event.key == 102 : # f zooms out to show all entities
                     gs.image.set_focus(gs.entities,coor=(0,0))

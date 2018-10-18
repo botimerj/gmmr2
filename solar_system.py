@@ -14,6 +14,11 @@ def solar_system():
     MOON_M = 7.3476E22
     MOON_OR = 384400E3
 
+
+    MARS_R = 3389 
+    MARS_M = 6.39E23 
+    MARS_OR = 227.9E9 
+
     ent_arr = []
 
     # SUN
@@ -37,19 +42,48 @@ def solar_system():
                         density     =MOON_M/MOON_R,\
                         velocity    =[0,MOON_VEL],\
                         color       =(162,162,163)))
+
+
+    # MARS 
+    MARS_VEL = np.sqrt(SUN_M*G/MARS_OR)
+    ent_arr.append(Body(radius      =MARS_R,\
+                        coor        =[MARS_OR,0],\
+                        density     =MARS_M/MARS_R,\
+                        velocity    =[0,MARS_VEL],\
+                        color       =(253,41,11)))
+
     return ent_arr
 
 
-    def massive_bodies():
-        G = 6.67408E-11 
-        R = 695508E3
-        M = 1.9890E31 #10x sun mass
+def massive_bodies():
+    ent_arr = []
+    G = 6.67408E-11 
+    R = 695508E3
+    M = 1.9890E31 #10x sun mass
 
-        VEL = np.sqrt(SUN_M*G/EARTH_OR)
-        ent_arr.append(Body(radius      =R,\
-                            coor        =[0,0],\
-                            density     =M/R,\
-                            velocity    =[0,EARTH_VEL]))
+    OR = 695508E4
+
+    VEL = np.sqrt(M*G/OR)
+    ent_arr.append(Body(radius      =R,\
+                        coor        =[0,0],\
+                        density     =M/R,\
+                        velocity    =[0,0]))
+
+    ent_arr.append(Body(radius      =R,\
+                        coor        =[OR,0],\
+                        density     =M/R,\
+                        velocity    =[0,VEL]))
+
+    ent_arr.append(Body(radius      =R,\
+                        coor        =[-OR,0],\
+                        density     =M/R,\
+                        velocity    =[0,-VEL]))
+
+    ent_arr.append(Body(radius      =R,\
+                        coor        =[5*OR/np.sqrt(2),5*OR/np.sqrt(2)],\
+                        density     =M/R,\
+                        velocity    =[-VEL,VEL]))
+    return ent_arr
 
         #ent_arr = []
         #ent_arr.append(Planet(radius=100,coor=(0,0),velocity=(1,1)))
