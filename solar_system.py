@@ -1,5 +1,6 @@
 from entities import Body
 import numpy as np
+import random as rand
 
 def solar_system():
     G = 6.67408E-11 
@@ -85,33 +86,60 @@ def massive_bodies():
                         velocity    =[-VEL,VEL]))
     return ent_arr
 
-        #ent_arr = []
-        #ent_arr.append(Planet(radius=100,coor=(0,0),velocity=(1,1)))
-        #ent_arr.append(Planet(radius=100,coor=(1000,1000),velocity=(-1,-1)))
-        #vel = np.sqrt(500*1*G/2000)/2
-        #ent_arr.append(Body(radius=500,coor=(-2000,0),velocity=(0,vel)))
-        #ent_arr.append(Body(radius=500,coor=(2000,0),velocity=(0,-vel)))
-        #vel = np.sqrt(500*1*G/2000)/2
-        #ent_arr.append(Body(radius=500,coor=(10000,1000),velocity=(0,vel)))
-        #ent_arr.append(Body(radius=500,coor=(14000,1000),velocity=(0,-vel)))
-    
-        #sun_radius = 10000
-        #sun_density = 2 
-        #sun_mass = sun_radius*sun_density
-        #ss_rad = 100000
-      
-        #ent_arr.append(Body(radius=sun_radius,coor=[0,0],density=sun_density))
-        #for i in range(200) : 
-        #    x_coor = rand.randint(-ss_rad,ss_rad)
-        #    y_coor = rand.randint(-ss_rad,ss_rad) 
-        #    theta = np.abs(np.arctan(y_coor/x_coor))
-        #    vel = np.sqrt(sun_mass*G/distance([0,0],[x_coor,y_coor]))
-        #    vel_x = np.cos(theta)*vel*np.sign(-y_coor)
-        #    vel_y = np.sin(theta)*vel*np.sign(x_coor)
-        #    ent_arr.append(Body(coor=(x_coor,y_coor),velocity=[vel_x,vel_y],density=1))
+def unit_test1() : 
+    ent_arr = []
+    G = 1
+    ent_arr.append(Body(radius=10000,coor=(0,0)))
+    return ent_arr
 
-        #ent_arr.append(Planet(radius=1000,coor=[0,0],density=10))
-        #vel = np.sqrt(1000*10*G/2000)
-        #ent_arr.append(Planet(radius=100,coor=[2000,0],velocity=(0,-vel),density=0.001))
-        #vel = np.sqrt(1000*10*G/6000)
-        #ent_arr.append(Planet(radius=200,coor=[6000,0],velocity=(0,-vel),density=0.001))
+def unit_test2() : 
+    G = 1
+    ent_arr = []
+    radius = [2000,4000]
+    density = [2,2]
+    mass = [radius[0]*density[0], radius[0]*density[0]]
+    center = [[0,0],[20000,2000]]
+    distance = [6000,8000]
+    coor = []
+    coor.append([center[0][0]-distance[0],0])
+    coor.append([center[0][0]+distance[0],0])
+    coor.append([center[1][0]-distance[1],0])
+    coor.append([center[1][0]+distance[1],0])
+
+    vel = np.sqrt(mass[0]*density[0]*G/distance[0])/2
+    ent_arr.append(Body(radius=radius[0],coor=coor[0],velocity=(0,vel)))
+    ent_arr.append(Body(radius=radius[0],coor=coor[1],velocity=(0,-vel)))
+
+    vel = np.sqrt(mass[1]*density[1]*G/distance[1])/2
+    ent_arr.append(Body(radius=radius[1],coor=coor[2],velocity=(0,vel)))
+    ent_arr.append(Body(radius=radius[1],coor=coor[3],velocity=(0,-vel)))
+    return ent_arr
+   
+def small_bodies() :  
+    G = 1
+    ent_arr = []
+    sun_radius = 1000
+    sun_density = 2 
+    sun_mass = sun_radius*sun_density
+    ss_rad = 100000
+  
+    ent_arr.append(Body(radius=sun_radius,coor=[0,0],density=sun_density))
+    for i in range(20) : 
+        x_coor = rand.randint(-ss_rad,ss_rad)
+        y_coor = rand.randint(-ss_rad,ss_rad) 
+        theta = np.abs(np.arctan(y_coor/x_coor))
+        vel = np.sqrt(sun_mass*G/distance([0,0],[x_coor,y_coor]))
+        vel_x = np.cos(theta)*vel*np.sign(-y_coor)
+        vel_y = np.sin(theta)*vel*np.sign(x_coor)
+        ent_arr.append(Body(coor=(x_coor,y_coor),velocity=[vel_x,vel_y],density=1))
+
+    #ent_arr.append(Body(radius=1000,coor=[0,0],density=10))
+    #vel = np.sqrt(1000*10*G/2000)
+    #ent_arr.append(Body(radius=100,coor=[2000,0],velocity=(0,-vel),density=0.001))
+    #vel = np.sqrt(1000*10*G/6000)
+    #ent_arr.append(Body(radius=200,coor=[6000,0],velocity=(0,-vel),density=0.001))
+
+    return ent_arr
+
+def distance(a,b):
+    return np.sqrt((a[1]-b[1])**2+(a[0]-b[0])**2)

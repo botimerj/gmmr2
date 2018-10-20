@@ -3,11 +3,15 @@ import pygame
 import numpy as np
 import random as rand
 import config 
+import solar_system
 from logo import draw_logo
 from entities import Body
 from entities import Grid
-from solar_system import solar_system
-from solar_system import massive_bodies 
+
+#from solar_system import solar_system
+#from solar_system import massive_bodies 
+#from solar_system import small_bodies
+#from solar_system import unit_test 
 
 class Image(): 
     def __init__(self) : 
@@ -20,41 +24,56 @@ class Image():
         self.screen = pygame.display.set_mode(config.SCREEN_SIZE)
     
     def init(self,entities) : 
-        if self.grid.grid_enable : self.screen.blit(self.grid.draw(),(0,0))
-        else : self.screen.fill((20,20,20))
+        self.zoom_full(entities)
+        self.zoom_full(entities)
+
+    # Updates the images of all elements (redraws each shape: expensive)
+    def update(self,entities) :     
         for e in entities : 
             e.draw(self.zoom,self.focus)
-            if(e.visible) : 
-                self.screen.blit(e.image,e.px_ul)
-        pygame.display.flip() 
+            e.physics(0,self.zoom,self.focus)
 
-        
-    def update(self,entities) : 
+    # Redraws the screen by blitting images from entities (uses existing images: cheap)
+    def draw(self,entities) : 
         if self.grid.grid_enable : self.screen.blit(self.grid.draw(),(0,0))
         else : self.screen.fill((20,20,20))
         for e in entities : 
-            #e.draw(self.zoom,self.focus)
             if(e.visible) : 
                 self.screen.blit(e.image,e.px_ul)
         self.screen.blit(cross_hair(),(config.CENTER[0]-2,config.CENTER[1]-2))
         pygame.display.flip() 
-    
-    def scroll(self, direction, entities) : 
-        zoom_mod = np.floor(self.zoom/10)
-        if direction : # Zoom out
-            self.zoom += zoom_mod 
-        else : 
-            self.zoom -= zoom_mod 
+
+    # Update the entities images to account for screen movement (does not draw anything, unless entity is bigger than the screen)
+    def move(self, direction, entities) :  
+        if   direction == 273 : self.focus[1] += self.zoom*10 # UP
+        elif direction == 274 : self.focus[1] -= self.zoom*10 # DOWN 
+        elif direction == 275 : self.focus[0] += self.zoom*10 # RIGHT 
+        elif direction == 276 : self.focus[0] -= self.zoom*10 # LEFT
         if self.grid.grid_enable : self.grid.update(self.zoom,self.focus)
         for e in entities : 
-            e.draw(self.zoom,self.focus)
+            e.move(self.zoom,self.focus)
+
+    def scroll(self, direction, entities) : 
+        if direction : # Zoom out
+            zoom_mod = 10**(np.ceil(np.log10(self.zoom+0.1))-1)/2
+            self.zoom += zoom_mod 
+        else : 
+            zoom_mod = 10**(np.ceil(np.log10(self.zoom))-1)/2
+            self.zoom -= zoom_mod 
+            if self.zoom < 1 : self.zoom = 1
+        if self.grid.grid_enable : self.grid.update(self.zoom,self.focus)
+        self.update(entities)
+        self.draw(entities)
 
     def zoom_full(self, entities) : 
-        max_coor = 10000
+        max_coor = config.CENTER[0]
         for e in entities : 
             if distance(e.coor,(0,0)) > max_coor : 
                 max_coor = distance(e.coor,(0,0))
+            if e.radius > max_coor:
+                max_coor = e.radius*2
         self.zoom = int(max_coor/(config.CENTER[0]-100))
+        self.scroll(0,entities)
     
     def move(self, direction, entities) :  
         if   direction == 273 : self.focus[1] += self.zoom*10 # UP
@@ -126,16 +145,18 @@ class GameState():
         self.sync_counter = self.sync_cycles+1 
         self.id_arr = []
 
+        # Init objects
         self.entities = self.init_entities()
         self.image.init(self.entities) 
-        self.approx_physics(1)
         
     def init_entities(self) : 
-        ent_arr = solar_system() 
-        #ent_arr = massive_bodies() 
+        #ent_arr = solar_system.solar_system() 
+        #ent_arr = solar_system.massive_bodies() 
+        #ent_arr = solar_system.small_bodies() 
+        #ent_arr = solar_system.unit_test1()
+        ent_arr = solar_system.unit_test2()
         for e in ent_arr: 
             self.id_arr.append(e.id)
-        self.image.zoom_full(ent_arr)
         return ent_arr
     
     def merge(self, e1, e2) : 
@@ -158,6 +179,7 @@ class GameState():
                     if distance(entity.coor,e.coor) < (entity.radius + e.radius)/4*3 : 
                         entity = self.merge(entity, e)
                         self.entities.remove(e)
+                        self.image.update(entities)
 
         for entity in self.entities : 
             forces = np.zeros([1,2])
@@ -192,6 +214,7 @@ class GameState():
                         self.id_arr.remove(e.id)
                         entity = self.merge(entity, e)
                         self.entities.remove(e)
+                        self.image.update(self.entities)
                         self.synchronize()
 
     def synchronize(self) : 
@@ -266,6 +289,7 @@ class GameState():
         second = int(time)
         print(year,'y ', day,'d ', hour,'h ', minute,'m ', second, 's',sep="")
 
+
 def distance(a,b):
     return np.sqrt((a[1]-b[1])**2+(a[0]-b[0])**2)
 
@@ -291,7 +315,7 @@ def main():
     time_old = 0
     cycle_old = 0
     physics_cycle_count = 0
-    physics_cycles_per_frame = 50
+    physics_cycles_per_frame = 10
 
     running = True
      
@@ -309,22 +333,16 @@ def main():
             if gs.pause == False : 
                 #gs.physics(gs.speed)
                 gs.approx_physics(gs.speed)
-
-        #if physics_cycle_count < physics_cycles_per_frame : 
-        #    if gs.pause == False : 
-        #        #gs.physics(gs.speed)
-        #        gs.approx_physics(gs.speed/physics_cycles_per_frame)
-        #        physics_cycle_count += 1
-                 
-        
-        if gs.image.display and time-gs.image.time > config.FRAME_DELAY :
+        elif gs.image.display and time-gs.image.time > config.FRAME_DELAY :
             if gs.pause == False : 
                 #gs.physics(gs.speed)
+                #gs.approx_physics(gs.speed)
                 for i in range(physics_cycles_per_frame) : 
-                    gs.approx_physics(gs.speed)
+                    #gs.approx_physics(gs.speed)
+                    gs.approx_physics(1)
             if gs.image.tracking != None : 
                 gs.image.set_focus(gs.entities) 
-            gs.image.update(gs.entities)
+            gs.image.draw(gs.entities)
             gs.image.time = time
             physics_cycle_count = 0
 
@@ -342,7 +360,9 @@ def main():
             elif event.type == pygame.KEYDOWN : 
                 if gs.image.tracking == None : 
                     if event.key >= 273 and event.key <= 276 : gs.image.move(event.key,gs.entities)
-                if event.key == 32 : gs.pause = not gs.pause  #Space bar to pause physics
+                if event.key == 32 : #Space bar to pause physics
+                    gs.pause = not gs.pause  
+                    print("Physics paused : ", gs.pause)
                 #if event.key == 32 : 
                 #    gamestate.physics(10)  #Space bar to pause physics
                 #    for e in gamestate.entities : 

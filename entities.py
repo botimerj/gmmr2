@@ -39,7 +39,7 @@ class Body():
         self.influences = [] 
    
         # Image information
-        self.visible   = False
+        self.visible   = True 
         self.px_radius = None # Radius in pixels
         self.px_ul     = None # upper left location
         self.image     = pygame.Surface((1,1)) 
@@ -49,27 +49,41 @@ class Body():
 
     def draw(self, zoom, focus) :
         self.px_radius = int(self.radius/zoom)
-        #self.move(zoom,focus)       # Update upper left location
+        
+        image_dim = self.px_radius*2-1
+        small_img =  image_dim < config.SCREEN_SIZE[0] and image_dim < config.SCREEN_SIZE[1] 
+        c_px = None
+        c_rel = None
         
         if self.visible : 
             if self.px_radius != 0 : 
-                image_dim = self.px_radius*2-1
-                if image_dim < config.SCREEN_SIZE[0] and image_dim < config.SCREEN_SIZE[1] :  
+                if small_img :  
                     self.image = pygame.Surface((image_dim,image_dim))
                 else : # If planet is bigger than the screen
                     self.image = pygame.Surface(config.SCREEN_SIZE)
             else : # Always render body as at least 1 pixel 
                 image_dim = 1 
                 self.image = pygame.Surface((1,1))
+
+            # Initialize image 
             self.image.set_colorkey((255,255,255))
             self.image.fill((255,255,255))
-            if image_dim < config.SCREEN_SIZE[0] and image_dim < config.SCREEN_SIZE[1] :  
+
+            # Draw circle
+            if small_img :  
                 pygame.draw.circle(self.image,self.color,(self.px_radius,self.px_radius),self.px_radius)
             else : # If planet is bigger than the screen
                 c_rel = [focus[0] - self.coor[0], focus[1] - self.coor[1]]
                 c_px  = [-int(c_rel[0]/zoom)+config.CENTER[0], int(c_rel[1]/zoom)+config.CENTER[1]]
                 #print('c_rel = ', c_rel, 'c_px = ', c_px, 'px_radius = ', self.px_radius)
                 pygame.draw.circle(self.image,self.color,c_px,self.px_radius)
+
+        # Print stats
+        #print('---Draw Stats---')
+        #print('visible             = ', self.visible)
+        #print('smaller than screen = ', small_img)
+        #print('c_px                = ', c_px)
+        #print('px_radius           = ', self.px_radius)
 
     def move(self, zoom, focus) : 
         image_dim = self.px_radius*2-1
@@ -82,17 +96,18 @@ class Body():
             self.visible = on_screen([top_left,bottom_right])
         else : # Image bigger than screen
             self.px_ul = (0,0)
-            #c_rel = [focus[0] - self.coor[0], focus[1] - self.coor[1]]
-            #c_px  = [-int(c_rel[0]/zoom)+config.CENTER[0], int(c_rel[1]/zoom)+config.CENTER[1]]
-            #focus_mod  = [focus[0]-config.CENTER[0]*zoom, focus[1]-config.CENTER[1]*zoom]
-            
+
             # Enclose focus in a circle and check if body px radius intersects with it
             focus_radius = config.SCREEN_SIZE[0]*zoom
             if distance(focus, self.coor) > (self.radius+focus_radius) : 
                 self.visible = False 
             else : 
                 self.visible = True
-                self.draw(zoom, focus)
+                self.image.fill((255,255,255))
+                c_rel = [focus[0] - self.coor[0], focus[1] - self.coor[1]]
+                c_px  = [-int(c_rel[0]/zoom)+config.CENTER[0], int(c_rel[1]/zoom)+config.CENTER[1]]
+                pygame.draw.circle(self.image,self.color,c_px,self.px_radius)
+                #self.draw(zoom, focus)
     
     def physics(self,dt,zoom,focus) : 
         self.accel = np.sum(self.forces,axis=0)/self.mass
