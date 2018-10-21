@@ -6,6 +6,7 @@ import config
 
 #config.CENTER = (int(config.SCREEN_SIZE[0]/2),int(config.SCREEN_SIZE[1]/2))
 
+
 class Body():
     def __init__(self, body_type = 'Body',\
                        color     = None,\
@@ -27,7 +28,7 @@ class Body():
         else            : self.coor = coor 
         if radius is None : self.radius = rand.randint(10,200)
         else              : self.radius = radius 
-        if velocity is None : self.velocity = (0,0)
+        if velocity is None : self.velocity = [0,0]
         else                : self.velocity = velocity
         if density is None : self.density = 1 
         else               : self.density = density
@@ -37,6 +38,9 @@ class Body():
         
         # Approx physics
         self.influences = [] 
+
+        # Collision
+        self.touching = []
    
         # Image information
         self.visible   = True 
@@ -116,6 +120,13 @@ class Body():
         #self.coor = [self.coor[0]+self.velocity[0]*dt+1/2*self.accel[0]*dt**2,\
         #             self.coor[1]+self.velocity[1]*dt+1/2*self.accel[1]*dt**2]
         self.move(zoom, focus)
+    
+    def print_stat(self) : 
+        print('Name : ', self.type)
+        print('accel: ', self.accel)
+        print('vel  : ', self.velocity)
+        print('------')
+   
    
 
     

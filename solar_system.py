@@ -26,7 +26,8 @@ def solar_system():
     ent_arr.append(Body(radius  =SUN_R,\
                         coor    =[0,0],\
                         density =SUN_M/SUN_R,\
-                        color   =(255,201,14)))
+                        color   =(255,201,14),\
+                        body_type = 'Sun'))
 
     # EARTH
     EARTH_VEL = np.sqrt(SUN_M*G/EARTH_OR)
@@ -34,7 +35,8 @@ def solar_system():
                         coor        =[EARTH_OR,0],\
                         density     =EARTH_M/EARTH_R,\
                         velocity    =[0,EARTH_VEL],\
-                        color       =(0,162,232)))
+                        color       =(0,162,232),\
+                        body_type   = 'Earth'))
 
     # MOON
     MOON_VEL = EARTH_VEL + np.sqrt(EARTH_M*G/MOON_OR)
@@ -93,6 +95,15 @@ def unit_test1() :
     return ent_arr
 
 def unit_test2() : 
+    ent_arr = []
+    G = 1
+    ent_arr.append(Body(body_type='p1',radius=1000,coor=(0,0),velocity=[0,0]))
+    #ent_arr.append(Body(radius=1000,coor=(2000,0),velocity=[0,0]))
+    ent_arr.append(Body(body_type='p2',radius=1000,coor=(10000,0),velocity=[0,0]))
+    ent_arr.append(Body(body_type='p2',radius=1000,coor=(5000,5000),velocity=[0,0]))
+    return ent_arr
+
+def unit_test3() : 
     G = 1
     ent_arr = []
     radius = [2000,4000]
@@ -116,15 +127,15 @@ def unit_test2() :
     return ent_arr
    
 def small_bodies() :  
-    G = 1
+    G = 10
     ent_arr = []
-    sun_radius = 1000
+    sun_radius = 2000
     sun_density = 2 
     sun_mass = sun_radius*sun_density
-    ss_rad = 100000
+    ss_rad = 20000
   
     ent_arr.append(Body(radius=sun_radius,coor=[0,0],density=sun_density))
-    for i in range(20) : 
+    for i in range(200) : 
         x_coor = rand.randint(-ss_rad,ss_rad)
         y_coor = rand.randint(-ss_rad,ss_rad) 
         theta = np.abs(np.arctan(y_coor/x_coor))

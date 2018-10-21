@@ -8,11 +8,6 @@ from logo import draw_logo
 from entities import Body
 from entities import Grid
 
-#from solar_system import solar_system
-#from solar_system import massive_bodies 
-#from solar_system import small_bodies
-#from solar_system import unit_test 
-
 class Image(): 
     def __init__(self) : 
         self.display = True
@@ -75,15 +70,6 @@ class Image():
         self.zoom = int(max_coor/(config.CENTER[0]-100))
         self.scroll(0,entities)
     
-    def move(self, direction, entities) :  
-        if   direction == 273 : self.focus[1] += self.zoom*10 # UP
-        elif direction == 274 : self.focus[1] -= self.zoom*10 # DOWN 
-        elif direction == 275 : self.focus[0] += self.zoom*10 # RIGHT 
-        elif direction == 276 : self.focus[0] -= self.zoom*10 # LEFT
-        if self.grid.grid_enable : self.grid.update(self.zoom,self.focus)
-        for e in entities : 
-            e.move(self.zoom,self.focus)
-
     def set_focus(self, entities, coor = None) : 
         if coor is None : 
             if self.tracking : 
@@ -112,6 +98,7 @@ class Image():
             print('mass = ' , entities[idx].mass)
             print('radius = ', entities[idx].radius) 
             print('force_list = ', entities[idx].influences)
+            print('touching_list = ', entities[idx].touching)
             print('-----')
     
     def tracking_idx(self, entities) : 
@@ -155,21 +142,11 @@ class GameState():
         #ent_arr = solar_system.small_bodies() 
         #ent_arr = solar_system.unit_test1()
         ent_arr = solar_system.unit_test2()
+        #ent_arr = solar_system.unit_test3()
         for e in ent_arr: 
             self.id_arr.append(e.id)
         return ent_arr
     
-    def merge(self, e1, e2) : 
-        mass = e1.mass + e2.mass
-        radius = np.sqrt(e1.radius**2 + e2.radius**2)
-        velocity =    [(e1.velocity[0]*e1.mass + e2.velocity[0]*e2.mass)/mass,\
-                       (e1.velocity[1]*e1.mass + e2.velocity[1]*e2.mass)/mass]
-        e3 = e1
-        e3.mass = mass
-        e3.radius = radius
-        e3.velocity = velocity
-        e3.collisions = e1.collisions + e2.collisions + 1
-        return e3
 
     def physics(self, dt) : 
         for entity in self.entities : 
@@ -205,17 +182,107 @@ class GameState():
             #print(np.sum(forces,axis=0),'v= ', entity.velocity, 'a= ', entity.accel, end=' | ')
         #print('----')
 
+    def merge(self, e1, e2) : 
+        mass = e1.mass + e2.mass
+        radius = np.sqrt(e1.radius**2 + e2.radius**2)
+        velocity =    [(e1.velocity[0]*e1.mass + e2.velocity[0]*e2.mass)/mass,\
+                       (e1.velocity[1]*e1.mass + e2.velocity[1]*e2.mass)/mass]
+        e3 = e1
+        e3.mass = mass
+        e3.radius = radius
+        e3.velocity = velocity
+        e3.collisions = e1.collisions + e2.collisions + 1
+        return e3
+
+    def bounce(self, e1, e2) : 
+        v1 = np.array(e1.velocity)
+        v2 = np.array(e2.velocity)
+        x1 = np.array(e1.coor)
+        x2 = np.array(e2.coor)
+        m1 = e1.mass
+        m2 = e2.mass
+        c = 2*m2/(m1+m2)
+        # if v1 and v2 are similar don't update velocity
+        threshold = 0.1 
+        if np.linalg.norm(v1-v2)**2 > threshold :
+        # From wiki on 2-D elastic collision
+            v1f = v1 - c*np.dot(v1-v2,x1-x2)/np.linalg.norm(x1-x2)**2*(x1-x2)
+        else : 
+            # Consider them touching
+            if e2.id not in e1.touching : 
+                e1.touching.append(e2.id) 
+                print('name = ',e1.type, ' touching_list = ', e1.touching)
+            v1f = v1 - (v1-v2)*0.5
+
+        dampening = 0.9#1#0.9
+        return v1f*dampening
+
+
+
     def collisions(self) : 
+        vbounce = []
+        count = 0
+
+        # Check collision, calculate new velocity
         for entity in self.entities : 
-            # Check collision
+            vbounce.append(entity.velocity)
+            new_vel = np.array([0,0])
+            collided = False
             for e in self.entities : 
+                #print('body: ', e.type, ' ', e.coor)
                 if e != entity: # don't check self collision
-                    if distance(entity.coor,e.coor) < (entity.radius + e.radius)/4*3 : 
-                        self.id_arr.remove(e.id)
-                        entity = self.merge(entity, e)
-                        self.entities.remove(e)
-                        self.image.update(self.entities)
-                        self.synchronize()
+                    overlap = np.round(distance(entity.coor,e.coor)-entity.radius-e.radius,3)
+                    if overlap < 0 :
+                        count += 1
+                        collided = True 
+                        new_vel = new_vel + self.bounce(entity,e) 
+                    else : 
+                        v1 = np.array(entity.velocity)
+                        v2 = np.array(e.velocity)
+                        threshold = 0.1
+                        if np.linalg.norm(v1-v2)**2 > threshold :
+                            if e.id in entity.touching : 
+                                entity.touching.remove(e.id) 
+            if collided : 
+                vbounce[-1] = new_vel
+
+        # Check collision, and move bodies away from of eachother if the overlap 
+        for entity in self.entities:
+            for e in self.entities:
+                if e != entity: # don't check self collision
+                    overlap = np.round(distance(entity.coor,e.coor)-entity.radius-e.radius,3)
+                    if overlap < 0 :
+                        [dy,dx] = [entity.coor[1]-e.coor[1],entity.coor[0]-e.coor[0]]
+                        if dx != 0 : 
+                            theta = np.abs(np.arctan(dy/dx))
+                        else :
+                            theta = np.pi/2
+                        #print('old_overlap = ', overlap)
+                        overlap = overlap
+                        e.coor = [e.coor[0] + np.abs(overlap)*np.cos(theta)*np.sign(-dx)/2,
+                                  e.coor[1] + np.abs(overlap)*np.sin(theta)*np.sign(-dy)/2]
+                        entity.coor = [entity.coor[0] + np.abs(overlap)*np.cos(theta)*np.sign(dx)/2,
+                                       entity.coor[1] + np.abs(overlap)*np.sin(theta)*np.sign(dy)/2]
+                        #print('new_overlap = ', np.round(distance(entity.coor,e.coor)-entity.radius-e.radius,3))
+                        
+                    #e_bigger = entity.radius < e.radius
+                    #if (distance(entity.coor,e.coor)-entity.radius < e.radius/8*7 or\
+                    #    distance(entity.coor,e.coor)-e.radius < entity.radius/8*7):
+                        #if (distance(entity.coor,e.coor)-entity.radius < e.radius/4*3 or\
+                        #    distance(entity.coor,e.coor)-e.radius < entity.radius/4*3):
+                            #move the entity away from other body
+
+                            #self.id_arr.remove(e.id)
+                            #entity = self.merge(entity, e)
+                            #self.entities.remove(e)
+                            #self.image.update(self.entities)
+                            #self.synchronize()
+
+        idx = 0
+        for entity in self.entities : 
+            entity.velocity = vbounce[idx]
+            idx += 1
+
 
     def synchronize(self) : 
         # For each body, save a list of top N influencers
@@ -255,21 +322,24 @@ class GameState():
             for i in range(len(entity.influences)) :  # Calculate the force of influences on object
                 e_idx = self.id_arr.index(entity.influences[i])
                 e = self.entities[e_idx]
-                m2 = e.mass
-                [dy,dx] = [entity.coor[1]-e.coor[1],entity.coor[0]-e.coor[0]]
-                if dx != 0 : 
-                    theta = np.abs(np.arctan(dy/dx))
-                else : 
-                    theta = np.pi/2
-                r2 = distance2(entity.coor,e.coor)
-                F = config.G*m1*m2/r2
-                Fx = F*np.cos(theta)*np.sign(-dx)
-                Fy = F*np.sin(theta)*np.sign(-dy)
-                forces = np.append(forces,[[Fx,Fy]],axis=0)
+    
+                # Only calculate force if they are not considered 'touching'
+                if e not in entity.touching : 
+                    m2 = e.mass
+                    [dy,dx] = [entity.coor[1]-e.coor[1],entity.coor[0]-e.coor[0]]
+                    if dx != 0 : 
+                        theta = np.abs(np.arctan(dy/dx))
+                    else : 
+                        theta = np.pi/2
+                    r2 = distance2(entity.coor,e.coor)
+                    F = config.G*m1*m2/r2
+                    Fx = F*np.cos(theta)*np.sign(-dx)
+                    Fy = F*np.sin(theta)*np.sign(-dy)
+                    forces = np.append(forces,[[Fx,Fy]],axis=0)
             entity.forces = forces
             entity.physics(dt/1000,self.image.zoom,self.image.focus)
             self.cycle += 1
-            self.time  += dt/1000
+        self.time  += dt/1000
 
          
     def print_stats(self) : 
@@ -337,9 +407,10 @@ def main():
             if gs.pause == False : 
                 #gs.physics(gs.speed)
                 #gs.approx_physics(gs.speed)
+                #for i in range(int(np.ceil(gs.speed/100))) : 
                 for i in range(physics_cycles_per_frame) : 
                     #gs.approx_physics(gs.speed)
-                    gs.approx_physics(1)
+                    gs.approx_physics(gs.speed)
             if gs.image.tracking != None : 
                 gs.image.set_focus(gs.entities) 
             gs.image.draw(gs.entities)
