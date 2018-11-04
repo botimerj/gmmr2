@@ -1,6 +1,7 @@
 from entities import Body
 import numpy as np
 import random as rand
+import config 
 
 def solar_system():
     G = 6.67408E-11 
@@ -27,7 +28,7 @@ def solar_system():
                         coor    =[0,0],\
                         density =SUN_M/SUN_R,\
                         color   =(255,201,14),\
-                        body_type = 'Sun'))
+                        name = 'Sun'))
 
     # EARTH
     EARTH_VEL = np.sqrt(SUN_M*G/EARTH_OR)
@@ -36,7 +37,7 @@ def solar_system():
                         density     =EARTH_M/EARTH_R,\
                         velocity    =[0,EARTH_VEL],\
                         color       =(0,162,232),\
-                        body_type   = 'Earth'))
+                        name   = 'Earth'))
 
     # MOON
     MOON_VEL = EARTH_VEL + np.sqrt(EARTH_M*G/MOON_OR)
@@ -97,10 +98,10 @@ def unit_test1() :
 def unit_test2() : 
     ent_arr = []
     G = 1
-    ent_arr.append(Body(body_type='p1',radius=1000,coor=(0,0),velocity=[0,0]))
+    ent_arr.append(Body(name='p1',radius=1000,coor=(0,0),velocity=[0,0]))
     #ent_arr.append(Body(radius=1000,coor=(2000,0),velocity=[0,0]))
-    ent_arr.append(Body(body_type='p2',radius=1000,coor=(10000,0),velocity=[0,0]))
-    ent_arr.append(Body(body_type='p2',radius=1000,coor=(5000,5000),velocity=[0,0]))
+    ent_arr.append(Body(name='p2',radius=1000,coor=(10000,0),velocity=[0,0]))
+    ent_arr.append(Body(name='p2',radius=1000,coor=(5000,5000),velocity=[0,0]))
     return ent_arr
 
 def unit_test3() : 
@@ -125,7 +126,80 @@ def unit_test3() :
     ent_arr.append(Body(radius=radius[1],coor=coor[2],velocity=(0,vel)))
     ent_arr.append(Body(radius=radius[1],coor=coor[3],velocity=(0,-vel)))
     return ent_arr
-   
+  
+def unit_test4():
+   # Large body with small bodies on surface 
+    radius = 20000
+
+    ent_arr = []
+
+    # Planet like body
+    ent_arr.append(Body(radius=20000,coor=(0,-20000),velocity=(0,0),density=10))
+    # Ball like object
+    ent_arr.append(Body(radius=10,coor=(0,50),  velocity=(0,0), density=0.001))
+    ent_arr.append(Body(radius=20,coor=(-50,50),velocity=(0,0), density=0.001))
+    ent_arr.append(Body(radius=5,coor=(50,50),  velocity=(0,0), density=0.001))
+    ent_arr.append(Body(radius=20,coor=(100,70),velocity=(0,0), density=0.001))
+
+    return ent_arr
+
+def unit_test5():
+   # Large body with small bodies on surface 
+    planet_r = 20000
+    planet_d = 10
+
+
+    moon_r = 1000 
+    moon_d = 5 
+    moon_o  = planet_r + 5000
+
+    ent_arr = []
+    # You!
+    ent_arr.append(Body(name='player',radius=100,coor=(0,200),velocity=(0,0),density=0.001))
+
+    # Planet like body
+    ent_arr.append(Body(name='planet',radius=planet_r,coor=(0,-planet_r),velocity=(0,0),density=planet_d))
+    # Moon like body
+    vel = np.sqrt(planet_r*planet_d*config.G/moon_o)
+    ent_arr.append(Body(radius=moon_r,coor=(moon_o,-planet_r),velocity=(0,vel),density=moon_d))
+    
+    return ent_arr
+
+def unit_test6():
+    ent_arr = []
+    # You!
+
+    # Large dense sun
+    sun_r = 100000
+    sun_d = 100
+    player_vel = np.sqrt(sun_r*sun_d*config.G/(sun_r+1000))
+    ent_arr.append(Body(name='player',radius=100,coor=(sun_r + 1000,0),velocity=(0,player_vel),density=0.001))
+    ent_arr.append(Body(name='sun',radius=sun_r,coor=(0,0),velocity=(0,0),density=sun_d))
+
+
+    num_planets = rand.randint(2,4)
+    planet_o = 0
+    for i in range(num_planets) : 
+        # Planet 
+        planet_r = rand.randint(5000,25000)
+        planet_d = 10 
+        planet_o += rand.randint(sun_r+100000,sun_r+1000000)
+        planet_vel = np.sqrt(sun_r*sun_d*config.G/planet_o)
+        ent_arr.append(Body(name='planet_'+str(i),radius=planet_r,coor=(planet_o,0),velocity=(0,planet_vel),density=planet_d))
+
+        num_moons = rand.randint(1,3)
+        moon_o = 0
+        for j in range(num_moons) : 
+            # Moon  
+            moon_r = rand.randint(200,1000)
+            moon_d = 1 
+            moon_o += rand.randint(planet_r+4000,planet_r+10000)
+            moon_vel = np.sqrt(planet_r*planet_d*config.G/moon_o) + planet_vel
+            ent_arr.append(Body(name='moon_'+str(i)+'_'+str(j),radius=moon_r,coor=(moon_o+planet_o,0),velocity=(0,moon_vel),density=moon_d))
+
+    return ent_arr
+
+ 
 def small_bodies() :  
     G = 10
     ent_arr = []

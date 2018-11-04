@@ -11,8 +11,8 @@ FRAME_DELAY = 1/FPS*1000
 
 # Physics
 G = 6.67408E-11 
-G = 1
-G = 10
+G = 0.1
+#G = 10
 
 # Colors
 WHITE = 0xFEFEFE 

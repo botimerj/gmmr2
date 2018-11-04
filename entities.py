@@ -6,9 +6,41 @@ import config
 
 #config.CENTER = (int(config.SCREEN_SIZE[0]/2),int(config.SCREEN_SIZE[1]/2))
 
+#class Player() : 
+
+
+class Cluster():
+    def __init__(self,ent_list) :
+        self.ent_list = ent_list
+        self.coor = self.center_calc()
+        self.velocity = self.velocity_calc()
+    
+    def center_calc(self):
+        for i in range(len(self.ent_list)):
+            center += self.ent_list[i].coor
+
+    def velocity_calc(self):
+        for i in range(len(self.ent_list)):
+            velocity += self.ent_list[i].velocity
+
+    def remove(self, ent):
+        if ent in self.ent_list:
+            self.ent_list.remove(ent)
+            ent.in_cluster = False 
+        self.center_calc()
+        self.velocity_calc()
+
+    def add(self, ent):
+        if ent not in self.ent_list:
+            if ent.in_cluster : 
+                self.ent_list.append(ent)
+                ent.in_cluster = True
+        self.center_calc()
+        self.velocity_calc()
+    
 
 class Body():
-    def __init__(self, body_type = 'Body',\
+    def __init__(self, name = 'Body',\
                        color     = None,\
                        coor      = None,\
                        radius    = None,\
@@ -16,7 +48,7 @@ class Body():
                        velocity  = None):
         
         # Identifiers
-        self.type   = body_type
+        self.name   = name 
         self.id     = rand.randint(1,2**32)
         if color is None : self.color  = (rand.randint(50,255),\
                                           rand.randint(50,255),\
@@ -41,7 +73,8 @@ class Body():
 
         # Collision
         self.touching = []
-   
+        self.in_cluster = False
+    
         # Image information
         self.visible   = True 
         self.px_radius = None # Radius in pixels
@@ -115,7 +148,7 @@ class Body():
     
     def physics(self,dt,zoom,focus) : 
         self.accel = np.sum(self.forces,axis=0)/self.mass
-        self.velocity = (self.velocity[0]+self.accel[0]*dt, self.velocity[1]+self.accel[1]*dt)
+        self.velocity = [self.velocity[0]+self.accel[0]*dt, self.velocity[1]+self.accel[1]*dt]
         self.coor = [self.coor[0]+self.velocity[0]*dt, self.coor[1]+self.velocity[1]*dt]
         #self.coor = [self.coor[0]+self.velocity[0]*dt+1/2*self.accel[0]*dt**2,\
         #             self.coor[1]+self.velocity[1]*dt+1/2*self.accel[1]*dt**2]

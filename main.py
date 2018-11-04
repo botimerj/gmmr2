@@ -93,8 +93,8 @@ class Image():
 
         if self.tracking :
             idx = self.tracking_idx(entities) 
+            print('name= ', entities[idx].name)
             print('planet= ', self.tracking)
-            print('collisions = ', entities[idx].collisions)
             print('mass = ' , entities[idx].mass)
             print('radius = ', entities[idx].radius) 
             print('force_list = ', entities[idx].influences)
@@ -141,8 +141,11 @@ class GameState():
         #ent_arr = solar_system.massive_bodies() 
         #ent_arr = solar_system.small_bodies() 
         #ent_arr = solar_system.unit_test1()
-        ent_arr = solar_system.unit_test2()
+        #ent_arr = solar_system.unit_test2()
         #ent_arr = solar_system.unit_test3()
+        #ent_arr = solar_system.unit_test4()
+        #ent_arr = solar_system.unit_test5()
+        ent_arr = solar_system.unit_test6()
         for e in ent_arr: 
             self.id_arr.append(e.id)
         return ent_arr
@@ -211,8 +214,8 @@ class GameState():
             # Consider them touching
             if e2.id not in e1.touching : 
                 e1.touching.append(e2.id) 
-                print('name = ',e1.type, ' touching_list = ', e1.touching)
-            v1f = v1 - (v1-v2)*0.5
+                print('name = ',e1.name, ' touching_list = ', e1.touching)
+            v1f = v1 - (v1-v2)*m2/(m2+m1)
 
         dampening = 0.9#1#0.9
         return v1f*dampening
@@ -239,8 +242,8 @@ class GameState():
                     else : 
                         v1 = np.array(entity.velocity)
                         v2 = np.array(e.velocity)
-                        threshold = 0.1
-                        if np.linalg.norm(v1-v2)**2 > threshold :
+                        threshold = 0.01
+                        if np.linalg.norm(v1-v2)**2 > threshold or overlap > 1:
                             if e.id in entity.touching : 
                                 entity.touching.remove(e.id) 
             if collided : 
@@ -259,10 +262,13 @@ class GameState():
                             theta = np.pi/2
                         #print('old_overlap = ', overlap)
                         overlap = overlap
-                        e.coor = [e.coor[0] + np.abs(overlap)*np.cos(theta)*np.sign(-dx)/2,
-                                  e.coor[1] + np.abs(overlap)*np.sin(theta)*np.sign(-dy)/2]
-                        entity.coor = [entity.coor[0] + np.abs(overlap)*np.cos(theta)*np.sign(dx)/2,
-                                       entity.coor[1] + np.abs(overlap)*np.sin(theta)*np.sign(dy)/2]
+                        # Move smaller entity
+                        if e.radius < entity.radius : 
+                            e.coor = [e.coor[0] + np.abs(overlap)*np.cos(theta)*np.sign(-dx),
+                                      e.coor[1] + np.abs(overlap)*np.sin(theta)*np.sign(-dy)]
+                        else : 
+                            entity.coor = [entity.coor[0] + np.abs(overlap)*np.cos(theta)*np.sign(dx),
+                                           entity.coor[1] + np.abs(overlap)*np.sin(theta)*np.sign(dy)]
                         #print('new_overlap = ', np.round(distance(entity.coor,e.coor)-entity.radius-e.radius,3))
                         
                     #e_bigger = entity.radius < e.radius
@@ -324,7 +330,7 @@ class GameState():
                 e = self.entities[e_idx]
     
                 # Only calculate force if they are not considered 'touching'
-                if e not in entity.touching : 
+                if e.id not in entity.touching : 
                     m2 = e.mass
                     [dy,dx] = [entity.coor[1]-e.coor[1],entity.coor[0]-e.coor[0]]
                     if dx != 0 : 
@@ -375,6 +381,8 @@ def main():
     logo = draw_logo()
     pygame.display.set_icon(logo)
     pygame.display.set_caption("gmmr2")
+
+    pygame.key.set_repeat(200,20)
      
     gs = GameState()
 
@@ -385,7 +393,7 @@ def main():
     time_old = 0
     cycle_old = 0
     physics_cycle_count = 0
-    physics_cycles_per_frame = 10
+    physics_cycles_per_frame = 1
 
     running = True
      
@@ -431,19 +439,18 @@ def main():
             elif event.type == pygame.KEYDOWN : 
                 if gs.image.tracking == None : 
                     if event.key >= 273 and event.key <= 276 : gs.image.move(event.key,gs.entities)
-                if event.key == 32 : #Space bar to pause physics
+
+                # O to toggle if display is updated
+                if event.key == 111 :  
+                    gs.image.display = not gs.image.display
+                # P to pause physics
+                if event.key == 112 : 
                     gs.pause = not gs.pause  
                     print("Physics paused : ", gs.pause)
-                #if event.key == 32 : 
-                #    gamestate.physics(10)  #Space bar to pause physics
-                #    for e in gamestate.entities : 
-                #        print(e.velocity, end=' | ')
-                #    print()
+                
                 if event.key == 27 : gs.image.tracking = None  # Esc to cancel tracking
                 if event.key == 103 :  # G to toggle grid
                     gs.image.grid.grid_enable = not gs.image.grid.grid_enable 
-                if event.key == 100 :  # D to toggle if display is updated
-                    gs.image.display = not gs.image.display
                     print('display : ', gs.image.display)
                 if event.key == 44 : 
                     gs.speed /= 2 #  < decrease speed
@@ -455,9 +462,30 @@ def main():
                     gs.speed = config.FRAME_DELAY  # / realtime
                     print(f'speed = {gs.speed/1000:.2f}')
                 if event.key == 118 : gs.print_stats() # V to print stats
-                if event.key == 102 : # f zooms out to show all entities
+
+                # F zooms out to show all entities
+                if event.key == 102 : 
                     gs.image.set_focus(gs.entities,coor=(0,0))
                     gs.image.zoom_full(gs.entities)
+
+                # Player Control
+                if event.key == 119 : 
+                    gs.entities[0].velocity[1] += np.abs(gs.entities[0].velocity[1])/10+0.01 #W
+                    print('Velocity: ', gs.entities[0].velocity)
+                if event.key == 97  : 
+                    gs.entities[0].velocity[0] -= np.abs(gs.entities[0].velocity[0])/10+0.01 #A
+                    print('Velocity: ', gs.entities[0].velocity)
+                if event.key == 115 : 
+                    gs.entities[0].velocity[1] -= np.abs(gs.entities[0].velocity[1])/10+0.01 #S
+                    print('Velocity: ', gs.entities[0].velocity)
+                if event.key == 100 : 
+                    gs.entities[0].velocity[0] += np.abs(gs.entities[0].velocity[0])/10+0.01 #D
+                    print('Velocity: ', gs.entities[0].velocity)
+                    
+ 
+ 
+
+
                     
             #elif event.type == pygame.MOUSEMOTION : 
             #    print(gs.image.mouse_loc(event.pos))
